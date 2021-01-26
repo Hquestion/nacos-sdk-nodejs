@@ -1,5 +1,5 @@
 {
-  "name": "nacos",
+  "name": "nacos2",
   "version": "1.0.0",
   "description": "nacos (https://nacos.io/en-us/) nodejs sdk",
   "scripts": {
@@ -17,7 +17,7 @@
   "bugs": {
     "url": "https://github.com/nacos-group/nacos-sdk-nodejs/issues"
   },
-  "homepage": "https://github.com/nacos-group/nacos-sdk-nodejs#readme",
+  "homepage": "https://github.com/Hquestion/nacos-sdk-nodejs#readme",
   "engines": {
     "node": ">= 8.0.0"
   },

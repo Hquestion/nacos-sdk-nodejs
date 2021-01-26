@@ -1,5 +1,5 @@
 {
-  "name": "nacos-naming",
+  "name": "nacos-naming2",
   "version": "2.0.1",
   "description": "nacos (https://nacos.io/en-us/) nodejs sdk",
   "main": "index.js",
@@ -19,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nacos-group/nacos-sdk-nodejs.git"
+    "url": "git+https://github.com/Hquestion/nacos-sdk-nodejs.git"
   },
   "keywords": [
     "nacos",
@@ -32,7 +32,7 @@
   "bugs": {
     "url": "https://github.com/nacos-group/nacos-sdk-nodejs/issues"
   },
-  "homepage": "https://github.com/nacos-group/nacos-sdk-nodejs#readme",
+  "homepage": "https://github.com/Hquestion/nacos-sdk-nodejs#readme",
   "engines": {
     "node": ">= 8.0.0"
   },
