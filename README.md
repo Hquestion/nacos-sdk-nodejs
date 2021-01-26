@@ -15,6 +15,8 @@
 
 [Nacos](https://nacos.io/en-us/) Node.js SDK
 
+> Forked from [https://github.com/nacos-group/nacos-sdk-nodejs](https://github.com/nacos-group/nacos-sdk-nodejs)
+
 ## Install
 
 ```bash
@@ -176,6 +178,11 @@ default value: [ClientOptions default value](https://github.com/nacos-group/naco
 Please let us know how can we help. Do check out [issues](https://github.com/nacos-group/nacos-sdk-nodejs/issues) for bug reports or suggestions first.
 
 PR is welcome.
+
+## Change By Me
+
++ fix the ```ssl``` bug
++ support authorize
 
 ## License
 

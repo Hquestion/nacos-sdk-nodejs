@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { HTTP_CONFLICT, HTTP_NOT_FOUND, HTTP_OK, VERSION } from './const';
+import {HTTP_CONFLICT, HTTP_NOT_FOUND, HTTP_OK, HTTP_UNAUTHORIZED, VERSION} from './const';
 import { ClientOptionKeys, IConfiguration, IServerListManager } from './interface';
 import * as urllib from 'urllib';
 import * as crypto from 'crypto';
@@ -26,8 +26,11 @@ export class HttpAgent {
   protected loggerDomain = 'Nacos';
   private debugPrefix = this.loggerDomain.toLowerCase();
   private debug = require('debug')(`${this.debugPrefix}:${process.pid}:http_agent`);
+  accessToken: string;
+  retryed = 0;
 
   constructor(options) {
+    this.debug('options: %s', options);
     this.options = options;
   }
 
@@ -80,6 +83,14 @@ export class HttpAgent {
 
   get defaultEncoding() {
     return this.configuration.get(ClientOptionKeys.DEFAULT_ENCODING) || 'utf8';
+  }
+
+  get nacosName() {
+    return this.configuration.get(ClientOptionKeys.NACOS_NAME);
+  }
+
+  get nacosPassword() {
+    return this.configuration.get(ClientOptionKeys.NACOS_PASSWORD);
   }
 
 
@@ -136,9 +147,14 @@ export class HttpAgent {
       const currentServer = await this.serverListMgr.getCurrentServerAddr(unit);
       let url = this.getRequestUrl(currentServer) + `${path}`;
       this.debug('request unit: [%s] with url: %s', unit, url);
+      const token = await this.authorize(currentServer);
+      let reqUrl = url;
+      if (token) {
+        reqUrl = url.indexOf('?') > 0 ? `${url}&accessToken=${token}` : `${url}?accessToken=${token}`;
+      }
 
       try {
-        const res = await this.httpclient.request(url, {
+        const res = await this.httpclient.request(reqUrl, {
           rejectUnauthorized: false,
           httpsAgent: false,
           method,
@@ -149,10 +165,19 @@ export class HttpAgent {
           secureProtocol: 'TLSv1_2_method',
           dataAsQueryString,
         });
-        this.debug('%s %s, got %s, body: %j', method, url, res.status, res.data);
+        this.debug('%s %s, got %s, body: %j', method, reqUrl, res.status, res.data);
         switch (res.status) {
           case HTTP_OK:
             return this.decodeResData(res, method);
+          case HTTP_UNAUTHORIZED:
+            this.accessToken = '';
+            this.retryed++;
+            if (this.retryed < 3) {
+              return await this.request(path, options);
+            } else {
+              this.retryed = 0;
+              return null;
+            }
           case HTTP_NOT_FOUND:
             return null;
           case HTTP_CONFLICT:
@@ -164,7 +189,7 @@ export class HttpAgent {
           default:
             await this.serverListMgr.updateCurrentServer(unit);
             // JAVA 还有一个针对 HTTP_FORBIDDEN 的处理，不过合并到 default 应该也没问题
-            lastErr = new Error(`${this.loggerDomain} Server Error Status: ${res.status}, url: ${url}, data: ${JSON.stringify(data)}`);
+            lastErr = new Error(`${this.loggerDomain} Server Error Status: ${res.status}, url: ${reqUrl}, data: ${JSON.stringify(data)}`);
             lastErr.name = `${this.loggerDomain}ServerResponseError`;
             lastErr.body = res.data;
             break;
@@ -208,6 +233,38 @@ export class HttpAgent {
       }
     } else {
       return res.data;
+    }
+  }
+
+  async authorize(currentServer: string) {
+    this.debug('先进行授权');
+    if (this.accessToken) {
+      return this.accessToken;
+    }
+    if (!this.nacosName) {
+      return false;
+    }
+    const authUrl = this.getRequestUrl(currentServer) + '/v1/auth/login';
+    try {
+      const res = await this.httpclient.request(authUrl, {
+        method: 'POST',
+        data: {
+          username: this.nacosName,
+          password: this.nacosPassword
+        },
+        contentType: 'text',
+        dataType: 'json',
+      });
+      switch (res.status) {
+        case HTTP_OK:
+          const data = this.decodeResData(res, 'POST');
+          this.accessToken = data.accessToken;
+          return this.accessToken;
+        default:
+          throw new Error('Nacos 鉴权失败！');
+    }
+  } catch (e) {
+      throw new Error('Nacos 鉴权失败2！');
     }
   }
 

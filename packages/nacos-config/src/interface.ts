@@ -285,6 +285,8 @@ export enum ClientOptionKeys {
   HTTP_AGENT = 'httpAgent',
   SERVER_MGR = 'serverMgr',
   DEFAULT_ENCODING = 'defaultEncoding',
+  NACOS_NAME = 'username',
+  NACOS_PASSWORD = 'password',
 }
 
 export interface IConfiguration {
