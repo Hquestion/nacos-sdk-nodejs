@@ -53,6 +53,7 @@ class NameProxy extends Base {
     }
     this.serversFromEndpoint = [];
     this.lastSrvRefTime = 0;
+    this.accessToken = '';
   }
 
   get logger() {
@@ -69,6 +70,18 @@ class NameProxy extends Base {
 
   get httpclient() {
     return this.options.httpclient;
+  }
+
+  get serverPort() {
+    return this.options.serverPort;
+  }
+
+  get nacosName() {
+    return this.options.username;
+  }
+
+  get nacosPassword() {
+    return this.options.password;
   }
 
   async _getServerListFromEndpoint() {
@@ -160,7 +173,12 @@ class NameProxy extends Base {
     }
 
     const url = (this.options.ssl ? 'https://' : 'http://') + serverAddr + api;
-    const result = await this.httpclient.request(url, {
+    const token = await this.authorize(serverAddr);
+    let reqUrl = url;
+    if (token) {
+      reqUrl = url.indexOf('?') > 0 ? `${url}&accessToken=${token}` : `${url}?accessToken=${token}`;
+    }
+    const result = await this.httpclient.request(reqUrl, {
       method,
       headers,
       data: params,
@@ -174,7 +192,8 @@ class NameProxy extends Base {
     if (result.status === 304) {
       return '';
     }
-    const err = new Error('failed to req API: ' + url + '. code: ' + result.status + ' msg: ' + result.data);
+    this.accessToken = '';
+    const err = new Error('failed to req API: ' + reqUrl + '. code: ' + result.status + ' msg: ' + result.data);
     err.name = 'NacosException';
     err.status = result.status;
     throw err;
@@ -301,6 +320,48 @@ class NameProxy extends Base {
       count: Number(json.count),
       data: json.doms,
     };
+  }
+
+  // 获取请求 url
+  getRequestUrl(currentServer) {
+
+    if (!currentServer.includes(Constants.SERVER_ADDR_IP_SPLITER)) {
+      currentServer = currentServer + Constants.SERVER_ADDR_IP_SPLITER + DEFAULT_SERVER_PORT;
+    }
+    const url = (this.options.ssl ? 'https://' : 'http://') + currentServer + '/nacos';
+    return url;
+  }
+
+  async authorize(currentServer) {
+    if (this.accessToken) {
+      return this.accessToken;
+    }
+    if (!this.nacosName) {
+      return false;
+    }
+    const authUrl = this.getRequestUrl(currentServer) + '/v1/auth/login';
+    try {
+      const res = await this.httpclient.request(authUrl, {
+        method: 'POST',
+        data: {
+          username: this.nacosName,
+          password: this.nacosPassword,
+        },
+        contentType: 'text',
+        dataType: 'json',
+      });
+      switch (res.status) {
+        case 200:
+          // eslint-disable-next-line no-case-declarations
+          const data = res.data;
+          this.accessToken = data.accessToken;
+          return this.accessToken;
+        default:
+          throw new Error('Nacos 鉴权失败！');
+      }
+    } catch (e) {
+      throw new Error('Nacos 鉴权失败2！');
+    }
   }
 }
 
