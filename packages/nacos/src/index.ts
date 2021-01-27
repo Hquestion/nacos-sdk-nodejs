@@ -15,5 +15,5 @@
  * limitations under the License.
  */
 
-export * from 'nacos-config';
-export * from 'nacos-naming';
+export * from 'nacos-config2';
+export * from 'nacos-naming2';
